@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { runAllShifts } from "@/lib/employee/shift";
 import { ensureIndexes } from "@/lib/employee/db";
@@ -7,27 +8,21 @@ export const maxDuration = 800;
 export const dynamic = "force-dynamic";
 
 /**
- * The night shift cron. Vercel calls this on the schedule in vercel.json; it is
- * also safe to call manually with the CRON_SECRET.
- *
- * Authorisation accepts either Vercel's own cron header or an explicit bearer
- * secret, so the endpoint is never open to the internet.
+ * The night shift cron. Vercel calls this on the schedule in vercel.json and,
+ * when CRON_SECRET is set in the project, sends it as a bearer token. It can
+ * also be triggered by hand with the same token. Without the secret the
+ * endpoint refuses to run, so it is never open to the internet.
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get("authorization");
-  const isVercelCron = request.headers.get("x-vercel-cron") !== null;
-
-  if (!isVercelCron) {
-    if (!secret) {
-      return NextResponse.json(
-        { error: "CRON_SECRET is not configured; refusing to run unauthenticated." },
-        { status: 503 },
-      );
-    }
-    if (authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!secret) {
+    return NextResponse.json(
+      { error: "CRON_SECRET is not configured; refusing to run unauthenticated." },
+      { status: 503 },
+    );
+  }
+  if (!bearerMatches(request.headers.get("authorization"), secret)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const startedAt = Date.now();
@@ -52,4 +47,11 @@ export async function GET(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+/** Constant-time comparison of an Authorization header against `Bearer <secret>`. */
+function bearerMatches(header: string | null, secret: string): boolean {
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const actual = Buffer.from(header ?? "");
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }

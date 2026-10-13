@@ -1,68 +1,64 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { connectToDatabase } from "@/lib/mongodb";
 
-// POST /api/webhooks/clerk — Clerk webhook for user sync
-// Configure this URL in your Clerk Dashboard → Webhooks
+/**
+ * POST /api/webhooks/clerk — keeps the `users` collection in step with Clerk.
+ *
+ * The night-shift cron has no request context, so it reads the founder's email
+ * and name from this collection (lib/employee/users.ts) to send the morning
+ * report. Every request is signature-checked with CLERK_WEBHOOK_SIGNING_SECRET
+ * before anything is written; an unsigned or forged event is rejected.
+ */
 export async function POST(request: NextRequest) {
+  let event;
   try {
-    const payload = await request.json();
-    const { type, data } = payload;
+    event = await verifyWebhook(request);
+  } catch (error) {
+    console.error("[Clerk Webhook] Signature verification failed:", error);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
 
+  try {
     const { db } = await connectToDatabase();
 
-    switch (type) {
+    switch (event.type) {
       case "user.created":
       case "user.updated": {
-        const user = {
-          clerkId: data.id,
-          email:
-            data.email_addresses?.find(
-              (e: { id: string }) => e.id === data.primary_email_address_id
-            )?.email_address || data.email_addresses?.[0]?.email_address || "",
-          name: [data.first_name, data.last_name].filter(Boolean).join(" ") || "User",
-          avatar: data.image_url || "",
-          plan: "free" as const,
-          githubConnected: data.external_accounts?.some(
-            (a: { provider: string }) => a.provider === "oauth_github"
-          ) ?? false,
-          updatedAt: new Date().toISOString(),
-        };
+        const data = event.data;
+        const email =
+          data.email_addresses.find((e) => e.id === data.primary_email_address_id)
+            ?.email_address ||
+          data.email_addresses[0]?.email_address ||
+          "";
+        const name = [data.first_name, data.last_name].filter(Boolean).join(" ") || "User";
 
         await db.collection("users").updateOne(
           { clerkId: data.id },
           {
-            $set: user,
-            $setOnInsert: {
-              plan: "free",
-              onboardingCompleted: false,
-              createdAt: new Date().toISOString(),
-            },
+            $set: { clerkId: data.id, email, name, updatedAt: new Date().toISOString() },
+            $setOnInsert: { createdAt: new Date().toISOString() },
           },
-          { upsert: true }
-        );
-
-        console.log(
-          `[Clerk Webhook] ${type}: ${user.email} (${data.id})`
+          { upsert: true },
         );
         break;
       }
 
       case "user.deleted": {
-        await db.collection("users").deleteOne({ clerkId: data.id });
-        console.log(`[Clerk Webhook] user.deleted: ${data.id}`);
+        if (event.data.id) {
+          await db.collection("users").deleteOne({ clerkId: event.data.id });
+        }
         break;
       }
 
       default:
-        console.log(`[Clerk Webhook] Unhandled event: ${type}`);
+        // Other event types are not subscribed to; acknowledge and ignore.
+        break;
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("[Clerk Webhook] Error:", error);
-    return NextResponse.json(
-      { error: "Webhook processing failed" },
-      { status: 500 }
-    );
+    console.error("[Clerk Webhook] Handler failed:", error);
+    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }

@@ -5,7 +5,6 @@ import {
   findByStripeCustomer,
   setSubscriptionStatus,
 } from "@/lib/employee/plan";
-import { connectToDatabase } from "@/lib/mongodb";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,7 +53,6 @@ export async function POST(request: NextRequest) {
           extraCredits: Number(session.metadata?.extraCredits) || 0,
           firstMonth: true,
         });
-        await markUserPlan(clerkId, "pro");
         console.log(`[stripe] hired: ${clerkId}`);
         break;
       }
@@ -95,10 +93,7 @@ export async function POST(request: NextRequest) {
         const customerId = typeof sub.customer === "string" ? sub.customer : null;
         if (!customerId) break;
         const subscription = await findByStripeCustomer(customerId);
-        if (subscription) {
-          await setSubscriptionStatus(subscription.userId, "canceled");
-          await markUserPlan(subscription.userId, "free");
-        }
+        if (subscription) await setSubscriptionStatus(subscription.userId, "canceled");
         break;
       }
 
@@ -112,18 +107,4 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ received: true });
-}
-
-async function markUserPlan(clerkId: string, plan: "free" | "pro"): Promise<void> {
-  try {
-    const { db } = await connectToDatabase();
-    await db
-      .collection("users")
-      .updateOne(
-        { clerkId },
-        { $set: { plan, updatedAt: new Date().toISOString() } },
-      );
-  } catch (e) {
-    console.error("[stripe] markUserPlan failed", e);
-  }
 }

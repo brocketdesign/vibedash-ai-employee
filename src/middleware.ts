@@ -1,5 +1,4 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -8,47 +7,14 @@ const isPublicRoute = createRouteMatcher([
   // Linked from the public landing page, so they must be reachable logged out.
   "/terms",
   "/privacy",
-  "/api/seed(.*)",
+  // Webhooks authenticate themselves: Stripe and Clerk by signature.
   "/api/webhooks(.*)",
-  "/api/demo(.*)",
-  "/api/v1(.*)",
-  "/docs(.*)",
+  // The night shift checks CRON_SECRET itself (Vercel Cron sends it as a bearer token).
+  "/api/cron(.*)",
 ]);
 
-const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
-const isDashboardRoute = createRouteMatcher(["/dashboard(.*)", "/workspace(.*)"]);
-const isAuthRoute = createRouteMatcher(["/login(.*)", "/signup(.*)"]);
-
 export default clerkMiddleware(async (auth, request) => {
-  const isDemoMode = request.cookies.get("demo_mode")?.value === "true";
-  const { userId } = await auth();
-
-  // If user is authenticated, clear the stale demo cookie
-  if (userId && isDemoMode) {
-    const response = NextResponse.next();
-    response.cookies.delete("demo_mode");
-    return response;
-  }
-
-  // Clear demo cookie when user navigates to login/signup so the auth flow
-  // starts cleanly without any lingering demo state
-  if (isDemoMode && isAuthRoute(request)) {
-    const response = NextResponse.next();
-    response.cookies.delete("demo_mode");
-    return response;
-  }
-
-  // Allow demo users to access dashboard without authentication
-  if (isDemoMode && isDashboardRoute(request)) {
-    return;
-  }
-
-  if (!isPublicRoute(request) && !isOnboardingRoute(request)) {
-    await auth.protect();
-  }
-  
-  // Onboarding routes need auth but will be handled by the layout
-  if (isOnboardingRoute(request)) {
+  if (!isPublicRoute(request)) {
     await auth.protect();
   }
 });
