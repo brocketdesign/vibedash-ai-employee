@@ -430,12 +430,12 @@ const server = http.createServer(async (req, res) => {
       const nginxConf    = `/etc/nginx/sites-available/${subdomain}.${BASE_DOMAIN}`;
       const nginxSymlink = `/etc/nginx/sites-enabled/${subdomain}.${BASE_DOMAIN}`;
       const mysql = (sql) => execFileSync('mysql', ['-e', sql], { stdio: 'pipe' });
-      try { mysql(`DROP DATABASE IF EXISTS \`${dbName}\`;`); } catch(_) {}
-      try { mysql(`DROP USER IF EXISTS '${dbUser}'@'localhost';`); } catch(_) {}
+      try { mysql(`DROP DATABASE IF EXISTS \`${dbName}\`;`); } catch {}
+      try { mysql(`DROP USER IF EXISTS '${dbUser}'@'localhost';`); } catch {}
       if (fs.existsSync(webRoot))       fs.rmSync(webRoot, { recursive: true, force: true });
       if (fs.existsSync(nginxSymlink))  fs.unlinkSync(nginxSymlink);
       if (fs.existsSync(nginxConf))     fs.unlinkSync(nginxConf);
-      try { execSync('nginx -s reload', { stdio: 'pipe' }); } catch(_) {}
+      try { execSync('nginx -s reload', { stdio: 'pipe' }); } catch {}
       console.log(`[agent] delete-site ✓ ${subdomain}`);
       return json(res, 200, { ok: true });
     }
@@ -523,7 +523,7 @@ const server = http.createServer(async (req, res) => {
       if (fs.existsSync(webroot))       fs.rmSync(webroot, { recursive: true, force: true });
       if (fs.existsSync(nginxSymlink))  fs.unlinkSync(nginxSymlink);
       if (fs.existsSync(nginxConf))     fs.unlinkSync(nginxConf);
-      try { execSync('nginx -s reload', { stdio: 'pipe' }); } catch(_) {}
+      try { execSync('nginx -s reload', { stdio: 'pipe' }); } catch {}
       console.log(`[agent] delete-static ✓ ${subdomain}`);
       return json(res, 200, { ok: true });
     }
@@ -556,7 +556,7 @@ const server = http.createServer(async (req, res) => {
         + '    );\n'
         + '}, 99);\n';
       fs.writeFileSync(path.join(muDir, 'vibedash-chatbot.php'), php);
-      try { execFileSync('chown', ['-R', 'www-data:www-data', muDir], { stdio: 'pipe' }); } catch (_) {}
+      try { execFileSync('chown', ['-R', 'www-data:www-data', muDir], { stdio: 'pipe' }); } catch {}
       console.log(`[agent] inject-chatbot ✓ ${subdomain}`);
       return json(res, 200, { ok: true, url: `https://${subdomain}.${BASE_DOMAIN}/` });
     }
