@@ -1,5 +1,7 @@
 # VibeDash: an AI employee that works the night shift
 
+[![CI](https://github.com/brocketdesign/vibedash-ai-employee/actions/workflows/ci.yml/badge.svg)](https://github.com/brocketdesign/vibedash-ai-employee/actions/workflows/ci.yml)
+
 VibeDash is an autonomous AI employee for a small online business. Every night it
 picks the one task most likely to make the company money, hands it to a
 specialised agent (a *manager*) that does the work with real tools (a code
@@ -9,6 +11,8 @@ Next.js and TypeScript app. The interesting part is the engine in
 [`src/lib/employee/`](src/lib/employee): a planner, eight managers that share a
 `run()` / `verify()` contract, and the guardrails that make it reasonable to
 leave running unattended.
+
+![The company dashboard after three night shifts](docs/screenshots/dashboard.png)
 
 ## How the nightly loop works
 
@@ -105,6 +109,9 @@ the lever, and the runtime refuses to run it.
 - **The hosting agent is locked down.** [`scripts/vps-agent.js`](scripts/vps-agent.js)
   checks a shared secret in constant time, validates subdomains and rejects
   path traversal.
+- **Every unattended entry point authenticates the caller.** The night-shift
+  endpoint requires `CRON_SECRET` (compared in constant time), and the Stripe
+  and Clerk webhooks reject any request whose signature does not verify.
 
 ## Tech stack
 
@@ -168,7 +175,7 @@ All of these are listed in [`.env.example`](.env.example).
 |---|---|---|
 | `MONGODB_URI` | All data | Yes |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Sign-in (Clerk) | Yes |
-| `NEXT_PUBLIC_APP_URL` | Links in emails and on the API docs page | Yes in production; defaults to `http://localhost:3000` |
+| `NEXT_PUBLIC_APP_URL` | Links in emails | Yes in production; defaults to `http://localhost:3000` |
 | `NOVITA_API_KEY` | The planner, every manager and the build sandbox | For any autonomous work |
 | `NOVITA_MODEL`, `NOVITA_REASONING_MODEL`, `NOVITA_BASE_URL`, `NOVITA_TEMPLATE_IMAGE` | Model, endpoint and sandbox image overrides | No |
 | `HOSTINGER_HOST_VPS_IP`, `HOSTINGER_MGMT_SECRET` | Address of the VPS running the hosting agent, and the secret it checks | For `build` and `ops` |
@@ -180,8 +187,8 @@ All of these are listed in [`.env.example`](.env.example).
 | `EMAIL_REPLY_TO` | Reply-to address for all email | No |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | Support address on the landing, terms and privacy pages | No |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | The subscription and its webhook | To run tasks |
-| `CRON_SECRET` | Bearer token for triggering the night shift by hand | Recommended |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GROK_API_KEY`, `OPENAI_API_KEY` | The older `/workspace` pages only | No |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Verifies the Clerk webhook that stores each founder's email for the morning report | For reports |
+| `CRON_SECRET` | Bearer token the night-shift endpoint requires; Vercel Cron sends it automatically once set | Yes, for the cron |
 
 ## Project layout
 
@@ -203,41 +210,46 @@ src/app/
 ├── page.tsx                The landing page
 ├── new/                    Hire the employee for a new or existing company
 ├── dashboard/[slug]/       The company dashboard: ticker, tasks, chat, last night's report
-├── workspace/              The earlier VibeDash project dashboard
 └── api/
     ├── companies/[slug]/   Tasks, chat, run now, social accounts
     ├── cron/night-shift/   The nightly entry point
     └── webhooks/           Stripe and Clerk
 
-scripts/                    Hosting agent, VPS setup, database seed
+scripts/                    Hosting agent and VPS setup
 tests/                      Unit and end-to-end suites
-docs/                       Notes on the user-data API and older features
+.github/workflows/ci.yml    Lint, type-check, both suites and a production build on every push
 ```
 
-The `/workspace` pages are the project dashboard VibeDash started as
-(pipeline, GitHub sync, AI code review, analytics). They still work but are not
-the focus of this repository. One of them pulls usage numbers from another app
-through a small documented endpoint; see
-[`docs/user-data-api.md`](docs/user-data-api.md).
+VibeDash started as a project-tracking dashboard (pipeline, GitHub sync, AI code
+review). That code was removed from `main` to keep this repository about the
+engine; it is preserved on the [`legacy`](https://github.com/brocketdesign/vibedash-ai-employee/tree/legacy) branch.
 
 ## Screenshots
 
-<!-- TODO: add screenshots before publishing, e.g. under docs/screenshots/ -->
+These are the real app, run locally with demo data: a sample company
+("Ledgerline") and three night shifts produced by the engine itself against a
+stub model, the same way the end-to-end suite runs. Integrations that are not
+configured (X, email, hosting, billing) show as such.
 
-- TODO: landing page (`/`)
-- TODO: company dashboard (`/dashboard/[slug]`): activity ticker, tasks and last night's report
-- TODO: strategy chat queuing a task
-- TODO: morning report email
+**The company dashboard.** The black strip is the live activity ticker. Below
+it: the plan and credits, last night's report, the queued backlog (one task
+pinned for tonight), and the strategy chat.
+
+![Company dashboard](docs/screenshots/dashboard-full.png)
+
+**The landing page.**
+
+![Landing page](docs/screenshots/landing.png)
 
 ## Status
 
 A working personal project. The night-shift engine, the eight managers, the
 dashboard and billing are implemented. The project builds without any
-environment variables, and the unit and end-to-end suites pass against a stub
-model. Doing real work needs keys for Novita, Resend, Zernio and Stripe, and a
+environment variables, and CI runs lint, a type-check, the unit suite, the
+end-to-end suite (a full night shift against a real MongoDB and a stub model)
+and a production build on every push. Doing real work needs keys for Novita, Resend, Zernio and Stripe, and a
 VPS for hosting.
 
 ## Licence
 
-No licence has been chosen yet. Until a `LICENSE` file is added, all rights are
-reserved.
+[MIT](LICENSE).
