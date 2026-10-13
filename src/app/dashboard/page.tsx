@@ -74,12 +74,6 @@ export default async function CompaniesPage() {
             </li>
           ))}
         </ul>
-
-        <p className="label mt-10">
-          <Link href="/workspace" className="underline underline-offset-4 hover:text-black">
-            Project workspace →
-          </Link>
-        </p>
       </main>
     </div>
   );

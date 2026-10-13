@@ -3,13 +3,12 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "installCommand": "npm install",
-  "regions": ["iad1"],
+  "regions": [
+    "iad1"
+  ],
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
-    },
-    "src/app/api/ai-advisor/**/*.ts": {
-      "maxDuration": 60
     },
     "src/app/api/companies/**/*.ts": {
       "maxDuration": 300
@@ -22,25 +21,39 @@
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-DNS-Prefetch-Control", "value": "on" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" }
+        {
+          "key": "X-DNS-Prefetch-Control",
+          "value": "on"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
       ]
     }
   ],
   "crons": [
-    {
-      "path": "/api/email/daily-summary",
-      "schedule": "0 9 * * *"
-    },
     {
       "path": "/api/cron/night-shift",
       "schedule": "0 3 * * *"
@@ -50,6 +63,6 @@
     "NEXT_PUBLIC_CLERK_SIGN_IN_URL": "/login",
     "NEXT_PUBLIC_CLERK_SIGN_UP_URL": "/signup",
     "NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL": "/dashboard",
-    "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL": "/onboarding"
+    "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL": "/new"
   }
 }

@@ -130,11 +130,9 @@
 /* ============================================================
    AI Employee — editorial theme
    ============================================================
-   The employee product is deliberately unlike the legacy dashboard: paper
-   white, a serif display face, monospace for anything the machine says, and a
+   Paper white, a serif display face, monospace for anything the machine says, and a
    single orange accent reserved for state that matters. It reads like a
-   company document, not an app chrome.
-   These are scoped under .employee so the legacy /workspace UI is untouched. */
+   company document, not an app chrome. Scoped under .employee. */
 
 .employee {
   --ink: #111111;

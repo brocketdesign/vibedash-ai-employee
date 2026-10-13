@@ -184,7 +184,6 @@ export default function LandingPage() {
           <div className="label flex flex-wrap gap-6">
             <Link href="/terms" className="hover:text-black">Terms</Link>
             <Link href="/privacy" className="hover:text-black">Privacy</Link>
-            <Link href="/workspace" className="hover:text-black">Project workspace</Link>
             <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-black">Support</a>
           </div>
         </div>
